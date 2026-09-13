@@ -1,5 +1,19 @@
 import type { EventListItem } from "@/types";
 
+// Hand-rolled rather than left to toLocaleDateString: Node's SSR runtime and
+// the browser can carry different ICU/locale data for the same "de-DE" short-
+// weekday format — observed producing "Di. 15. Sept." on one side and
+// "Di., 15. Sept." on the other for the identical Date. That's a real
+// hydration mismatch, not a cosmetic one: React discards and re-renders the
+// whole label client-side when server and client output disagree. A fixed
+// table can't disagree with itself, since nothing about it depends on the
+// runtime's locale data.
+const WEEKDAYS_DE_SHORT = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const MONTHS_DE_SHORT = [
+  "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez",
+];
+
 export interface EventDayGroup {
   /** "Today", "Tomorrow", or a date like "Sa, 5. Sep". */
   label: string;
@@ -28,11 +42,7 @@ function labelFor(date: Date, now: Date): string {
   if (key === today) return "Today";
   if (key === tomorrow) return "Tomorrow";
 
-  return date.toLocaleDateString("de-DE", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
+  return `${WEEKDAYS_DE_SHORT[date.getDay()]}, ${date.getDate()}. ${MONTHS_DE_SHORT[date.getMonth()]}`;
 }
 
 /**

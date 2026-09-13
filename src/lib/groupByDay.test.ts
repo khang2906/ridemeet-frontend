@@ -66,6 +66,19 @@ describe("groupByDay", () => {
     expect(groupByDay([])).toEqual([]);
   });
 
+  it("formats a far-future date without relying on locale-dependent formatting", () => {
+    // A fixed date, not relative to "now": Node's SSR runtime and the browser
+    // can disagree on toLocaleDateString's "de-DE" short-weekday output for
+    // the identical Date (observed: "Di. 15. Sept." vs "Di., 15. Sept."),
+    // which is a real hydration mismatch, not a cosmetic one. This pins the
+    // hand-rolled format so a regression back to toLocaleDateString shows up
+    // here rather than as a hydration warning in production.
+    const farFuture = new Date(2030, 5, 15); // Saturday, 15 June 2030
+    const groups = groupByDay([event(1, farFuture.toISOString())]);
+
+    expect(groups[0].label).toBe("Sa, 15. Jun");
+  });
+
   it("gives each group a distinct key for React", () => {
     const groups = groupByDay([event(1, localIso(1, 9)), event(2, localIso(2, 9))]);
     const keys = groups.map((g) => g.key);

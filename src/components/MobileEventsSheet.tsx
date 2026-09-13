@@ -120,7 +120,15 @@ export function MobileEventsSheet({
           <span className="text-sm font-medium">
             {events.length} {events.length === 1 ? "event" : "events"}
           </span>
-          <SportFilterSelect sport={sport} />
+          {/* Stops both events at this boundary — otherwise a tap here
+              bubbles up to the handle bar's own pointerdown/click handlers,
+              which read it as "the user tapped/dragged the sheet" and toggle
+              the snap point. That's what made picking a sport also collapse
+              the whole list: the dropdown and the drag handle were fighting
+              over the same tap. */}
+          <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <SportFilterSelect sport={sport} />
+          </div>
         </div>
       </div>
 
