@@ -31,6 +31,13 @@ export interface EventListItem {
   max_participants: number | null;
   lat: number | null;
   lng: number | null;
+  // Present here, not just on Event/EventResponse: the homepage map draws
+  // every visible event's route straight from the list payload, so it needs
+  // this on the lightweight shape too. route_gpx (the raw uploaded file)
+  // never appears in JSON at all — it's served only via its own download
+  // endpoint, since inlining it here would mean paying for its bytes on
+  // every page load.
+  route_points: [number, number][] | null;
 }
 
 export interface Rsvp {

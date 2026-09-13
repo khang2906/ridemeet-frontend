@@ -8,9 +8,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { LocationPickerLoader } from "@/components/LocationPickerLoader";
+import { downsampleRoute, parseGpx } from "@/lib/gpx";
 import type { Sport } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// Matches the backend's own cap (see MAX_ROUTE_GPX_BYTES in schemas.py) —
+// checked here too so a too-large file fails fast, before any parsing or
+// network round trip.
+const MAX_ROUTE_GPX_BYTES = 5 * 1024 * 1024;
 
 // Shared with Input's own styling so the plain <select>/<textarea> (no shadcn
 // wrapper exists for these yet) still look like they belong to the same form.
@@ -51,9 +57,43 @@ export default function NewEventPage() {
   const [maxParticipants, setMaxParticipants] = useState("");
   const [routeLink, setRouteLink] = useState("");
   const [description, setDescription] = useState("");
+  // routePoints (downsampled, for the map) and routeGpxText (the original
+  // file, verbatim, for re-downloading later) are derived together from one
+  // file, but kept as separate fields since that's how they're sent to the
+  // API — see schemas.py for why the raw file never comes back in a response.
+  const [routePoints, setRoutePoints] = useState<[number, number][] | null>(null);
+  const [routeGpxText, setRouteGpxText] = useState<string | null>(null);
+  const [routeFileName, setRouteFileName] = useState<string | null>(null);
+  const [routeError, setRouteError] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleGpxFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setRouteError(null);
+    setRoutePoints(null);
+    setRouteGpxText(null);
+    setRouteFileName(null);
+
+    if (file.size > MAX_ROUTE_GPX_BYTES) {
+      setRouteError("That file is too large (max 5MB).");
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      setRoutePoints(downsampleRoute(parseGpx(text)));
+      setRouteGpxText(text);
+      setRouteFileName(file.name);
+    } catch (err) {
+      // parseGpx's own messages ("no track points found", "not valid XML")
+      // are specific enough to show directly, rather than a generic fallback.
+      setRouteError(err instanceof Error ? err.message : "Couldn't read that file.");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,6 +130,8 @@ export default function NewEventPage() {
           max_participants: maxParticipants ? Number(maxParticipants) : null,
           route_link: routeLink || null,
           description: description || null,
+          route_points: routePoints,
+          route_gpx: routeGpxText,
           lat,
           lng,
         }),
@@ -162,6 +204,12 @@ export default function NewEventPage() {
               setLat(newLat);
               setLng(newLng);
             }}
+            onClear={() => {
+              setMeetingPoint("");
+              setLat(null);
+              setLng(null);
+            }}
+            routePreviewPoints={routePoints}
           />
         </div>
 
@@ -208,6 +256,27 @@ export default function NewEventPage() {
             value={routeLink}
             onChange={(e) => setRouteLink(e.target.value)}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Route file — GPX <span className="text-muted-foreground">(optional)</span>
+          </label>
+          <input
+            type="file"
+            accept=".gpx"
+            onChange={handleGpxFileChange}
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border file:border-input file:bg-transparent file:px-3 file:py-1 file:text-sm file:font-medium file:text-foreground"
+          />
+          {routeFileName && !routeError && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              ✓ {routePoints?.length} points loaded from {routeFileName}
+            </p>
+          )}
+          {routeError && <p className="mt-1 text-xs text-destructive">{routeError}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">
+            Draws the route on the map and lets others download it.
+          </p>
         </div>
 
         <div>

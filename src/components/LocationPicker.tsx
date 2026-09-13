@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, Marker, TileLayer, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { Input } from "@/components/ui/input";
 import { markerIcon } from "@/lib/leaflet-icon";
 
 const MUNICH: [number, number] = [48.1374, 11.5755];
+// Not per-event coloring (routeColorFor) — there's no event yet while this
+// form is open, and only one route is ever previewed here at a time, so a
+// fixed color is all this needs.
+const ROUTE_PREVIEW_COLOR = "#2563eb";
 
 type NominatimResult = {
   display_name: string;
@@ -20,6 +24,11 @@ type LocationPickerProps = {
   lat: number | null;
   lng: number | null;
   onPositionChange: (lat: number, lng: number) => void;
+  onClear: () => void;
+  // The just-uploaded route, shown on this same map so a meeting point picked
+  // far from where the route actually goes is obvious immediately — not
+  // something to discover later on the homepage map.
+  routePreviewPoints?: [number, number][] | null;
 };
 
 // Listens for clicks on the map. Has to be a child of MapContainer — react-leaflet's
@@ -33,12 +42,43 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
   return null;
 }
 
+// Re-fits the view whenever the pin or the route preview changes, rather than
+// only once at mount — the map is created before either exists (nothing is
+// picked yet), so a static center/zoom would never react to the user's own
+// actions. Depends on the raw values, not a combined array built in the
+// render body, since a fresh array reference every render would re-fit on
+// every unrelated keystroke elsewhere in the form.
+function FitBoundsOnChange({
+  lat,
+  lng,
+  routePreviewPoints,
+}: {
+  lat: number | null;
+  lng: number | null;
+  routePreviewPoints: [number, number][] | null | undefined;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    const points: [number, number][] = [
+      ...(lat != null && lng != null ? [[lat, lng] as [number, number]] : []),
+      ...(routePreviewPoints ?? []),
+    ];
+    if (points.length > 0) {
+      map.fitBounds(points, { padding: [24, 24] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lng, routePreviewPoints, map]);
+  return null;
+}
+
 export function LocationPicker({
   meetingPoint,
   onMeetingPointChange,
   lat,
   lng,
   onPositionChange,
+  onClear,
+  routePreviewPoints,
 }: LocationPickerProps) {
   const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -96,8 +136,6 @@ export function LocationPicker({
     }
   }
 
-  const position: [number, number] = lat != null && lng != null ? [lat, lng] : MUNICH;
-
   return (
     <div>
       <div className="relative">
@@ -130,13 +168,42 @@ export function LocationPicker({
         )}
       </div>
 
-      <MapContainer center={position} zoom={lat != null ? 14 : 12} className="mt-2 h-64 w-full rounded-lg">
+      {lat != null && lng != null && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-1 text-xs text-muted-foreground hover:underline"
+        >
+          Clear pin
+        </button>
+      )}
+
+      {/* Static center/zoom at mount — FitBoundsOnChange takes over from there,
+          since neither a pin nor a route exists yet when this first renders. */}
+      <MapContainer center={MUNICH} zoom={12} className="mt-2 h-64 w-full rounded-lg">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onClick={handleMapClick} />
-        {lat != null && lng != null && <Marker position={[lat, lng]} icon={markerIcon} />}
+        <FitBoundsOnChange lat={lat} lng={lng} routePreviewPoints={routePreviewPoints} />
+        {routePreviewPoints && routePreviewPoints.length > 1 && (
+          <Polyline
+            positions={routePreviewPoints}
+            pathOptions={{ color: ROUTE_PREVIEW_COLOR, weight: 4, opacity: 0.8 }}
+          />
+        )}
+        {lat != null && lng != null && (
+          <Marker
+            position={[lat, lng]}
+            icon={markerIcon}
+            // Leaflet markers stop their click from reaching the map's own
+            // click handler — without this, clicking directly on the pin did
+            // nothing at all, silently. This is what makes "click it again"
+            // actually remove it, matching what clicking a placed pin should do.
+            eventHandlers={{ click: onClear }}
+          />
+        )}
       </MapContainer>
     </div>
   );

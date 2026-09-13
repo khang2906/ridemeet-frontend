@@ -92,6 +92,17 @@ export function EventDetailPanel({
                 </a>
               </p>
             )}
+            {event.route_points && (
+              <p>
+                ⬇{" "}
+                <a
+                  href={`${API_URL}/api/events/${event.id}/gpx`}
+                  className="text-primary hover:underline"
+                >
+                  Download route (GPX)
+                </a>
+              </p>
+            )}
           </div>
 
           {event.description && (

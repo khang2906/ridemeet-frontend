@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
   Marker,
+  Polyline,
   TileLayer,
   ZoomControl,
   useMap,
@@ -11,7 +12,8 @@ import {
 } from "react-leaflet";
 
 import { markerIcon } from "@/lib/leaflet-icon";
-import type { EventListItem, MapBounds } from "@/types";
+import { routeColorFor } from "@/lib/routeColors";
+import type { EventListItem, MapBounds, Sport } from "@/types";
 
 const MUNICH: [number, number] = [48.1374, 11.5755];
 const USER_LOCATION_ZOOM = 12;
@@ -129,11 +131,17 @@ export function EventsMap({
   selectedEventId,
   onSelectEvent,
   onBoundsChange,
+  sport,
 }: {
   events: EventListItem[];
   selectedEventId: number | null;
   onSelectEvent: (id: number) => void;
   onBoundsChange: (bounds: MapBounds) => void;
+  // Routes only draw when one specific sport is selected, not "All" — mixing
+  // a bike route and a running route on one view doesn't help anyone compare
+  // them, and it lets each route be colored per-event rather than needing a
+  // second color dimension for sport.
+  sport: Sport | undefined;
 }) {
   // Events created before coordinates became mandatory can still have nulls —
   // this type guard both filters them out and tells TypeScript that everything
@@ -146,6 +154,18 @@ export function EventsMap({
   const points: [number, number][] = located.map((event) => [event.lat, event.lng]);
   const selectedEvent = located.find((event) => event.id === selectedEventId);
   const userLocation = useUserLocation();
+
+  // Routes are drawn only for events already passing the viewport filter —
+  // the same rule the event list uses — so a route never shows for a pin
+  // that isn't itself on screen. No separate count cap on top of that; see
+  // TODO.md for why.
+  const routedEvents =
+    sport == null
+      ? []
+      : located.filter(
+          (event): event is typeof event & { route_points: [number, number][] } =>
+            event.route_points != null && event.route_points.length > 1
+        );
 
   return (
     <MapContainer
@@ -168,6 +188,13 @@ export function EventsMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      {routedEvents.map((event) => (
+        <Polyline
+          key={event.id}
+          positions={event.route_points}
+          pathOptions={{ color: routeColorFor(event.id), weight: 4, opacity: 0.8 }}
+        />
+      ))}
       {located.map((event) => (
         <Marker
           key={event.id}

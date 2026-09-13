@@ -82,7 +82,21 @@ export default async function EventDetailPage({
 
       {event.lat != null && event.lng != null && (
         <div className="mb-6">
-          <EventMapLoader lat={event.lat} lng={event.lng} label={event.meeting_point} />
+          <EventMapLoader
+            lat={event.lat}
+            lng={event.lng}
+            label={event.meeting_point}
+            eventId={event.id}
+            routePoints={event.route_points}
+          />
+          {event.route_points && (
+            <a
+              href={`${API_URL}/api/events/${event.id}/gpx`}
+              className="mt-2 inline-block text-sm text-primary hover:underline"
+            >
+              ⬇ Download route (GPX)
+            </a>
+          )}
         </div>
       )}
 

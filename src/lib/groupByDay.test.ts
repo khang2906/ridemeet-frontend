@@ -15,6 +15,7 @@ function event(id: number, date: string): EventListItem {
     max_participants: null,
     lat: 48.1112,
     lng: 11.5514,
+    route_points: null,
   };
 }
 

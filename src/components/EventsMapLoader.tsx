@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { EventListItem, MapBounds } from "@/types";
+import type { EventListItem, MapBounds, Sport } from "@/types";
 
 // Same reasoning as EventMapLoader.tsx / LocationPickerLoader.tsx: Leaflet
 // touches `window` at module-load time, which crashes during the server-side
@@ -19,11 +19,13 @@ export function EventsMapLoader({
   selectedEventId,
   onSelectEvent,
   onBoundsChange,
+  sport,
 }: {
   events: EventListItem[];
   selectedEventId: number | null;
   onSelectEvent: (id: number) => void;
   onBoundsChange: (bounds: MapBounds) => void;
+  sport: Sport | undefined;
 }) {
   return (
     <EventsMap
@@ -31,6 +33,7 @@ export function EventsMapLoader({
       selectedEventId={selectedEventId}
       onSelectEvent={onSelectEvent}
       onBoundsChange={onBoundsChange}
+      sport={sport}
     />
   );
 }
