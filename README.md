@@ -42,8 +42,4 @@ npm test          # run once
 npm run test:watch
 ```
 
-## Testing on a phone over WiFi
 
-Needs three things set together — see `CLAUDE.md` in the project root for the
-full explanation (dev-server origin allowlisting, the LAN IP baked into
-`NEXT_PUBLIC_API_URL`, and CORS on the backend).
