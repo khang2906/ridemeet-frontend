@@ -13,7 +13,7 @@ stays until this one is deployed.
 
 Functionally complete for v1, including a GPX route feature beyond the
 original scope: upload a route, see it drawn on the map, download it again.
-Not yet deployed — see the backend repo's `TODO.md`.
+Not yet deployed — see `TODO.md` in the project root, which covers both repos.
 
 ## Tech stack
 
