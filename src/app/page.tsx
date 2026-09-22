@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthStatus } from "@/components/AuthStatus";
 import { EventsExplorer } from "@/components/EventsExplorer";
 import { Button } from "@/components/ui/button";
 import type { EventListItem, Sport } from "@/types";
@@ -31,7 +32,10 @@ export default async function Home({
     <div className="flex h-dvh flex-col">
       <header className="flex items-center justify-between border-b border-border px-4 py-4">
         <h1 className="text-3xl font-bold">RideMeet</h1>
-        <Button render={<Link href="/events/new" />} nativeButton={false}>+ New event</Button>
+        <div className="flex items-center gap-3">
+          <Button render={<Link href="/events/new" />} nativeButton={false}>+ New event</Button>
+          <AuthStatus />
+        </div>
       </header>
 
       {/* The map fills the rest of the viewport (Komoot-style); the event

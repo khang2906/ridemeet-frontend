@@ -52,3 +52,10 @@ export interface Event extends EventListItem {
   description: string | null;
   rsvps: Rsvp[];
 }
+
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  created_at: string;
+}

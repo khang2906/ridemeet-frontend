@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 // Named "--font-sans" (not "--font-geist-sans", next/font's usual default)
 // to match what globals.css's Tailwind theme actually reads — the previous
@@ -31,7 +32,9 @@ export default function RootLayout({
       lang="en"
       className={`${sans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
