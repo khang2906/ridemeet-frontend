@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapContainer, Marker, Polyline, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { Input } from "@/components/ui/input";
+import { reverseGeocode } from "@/lib/geocode";
 import { markerIcon } from "@/lib/leaflet-icon";
 
 const MUNICH: [number, number] = [48.1374, 11.5755];
@@ -119,11 +120,9 @@ export function LocationPicker({
     setSuggestions([]);
     onPositionChange(clickLat, clickLng);
 
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${clickLat}&lon=${clickLng}&format=json`)
-      .then((r) => r.json())
-      .then((result) => {
-        if (result?.display_name) onMeetingPointChange(result.display_name);
-      });
+    reverseGeocode(clickLat, clickLng).then((name) => {
+      if (name) onMeetingPointChange(name);
+    });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

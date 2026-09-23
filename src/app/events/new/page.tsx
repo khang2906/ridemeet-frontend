@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { LocationPickerLoader } from "@/components/LocationPickerLoader";
+import { reverseGeocode } from "@/lib/geocode";
 import { downsampleRoute, parseGpx } from "@/lib/gpx";
 import type { Sport } from "@/types";
 
@@ -85,9 +86,22 @@ export default function NewEventPage() {
 
     try {
       const text = await file.text();
-      setRoutePoints(downsampleRoute(parseGpx(text)));
+      const points = downsampleRoute(parseGpx(text));
+      setRoutePoints(points);
       setRouteGpxText(text);
       setRouteFileName(file.name);
+
+      // Default the meeting point to where the route actually starts — but
+      // only if nothing's been picked yet, so a deliberate earlier choice
+      // (e.g. "meet at the café, then ride to the trailhead") is never
+      // silently overwritten by uploading a route afterward.
+      if (lat == null && lng == null) {
+        const [startLat, startLng] = points[0];
+        setLat(startLat);
+        setLng(startLng);
+        const name = await reverseGeocode(startLat, startLng);
+        if (name) setMeetingPoint(name);
+      }
     } catch (err) {
       // parseGpx's own messages ("no track points found", "not valid XML")
       // are specific enough to show directly, rather than a generic fallback.
