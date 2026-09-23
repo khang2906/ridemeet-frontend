@@ -115,7 +115,7 @@ export default async function EventDetailPage({
             ))}
           </ul>
         )}
-        <RsvpForm eventId={event.id} />
+        <RsvpForm eventId={event.id} rsvps={event.rsvps} />
       </div>
     </main>
   );

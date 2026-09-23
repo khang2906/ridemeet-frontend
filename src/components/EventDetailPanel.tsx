@@ -124,7 +124,11 @@ export function EventDetailPanel({
                 ))}
               </ul>
             )}
-            <RsvpForm eventId={event.id} onRsvped={() => setRefreshKey((k) => k + 1)} />
+            <RsvpForm
+              eventId={event.id}
+              rsvps={event.rsvps}
+              onRsvped={() => setRefreshKey((k) => k + 1)}
+            />
           </div>
         </>
       )}

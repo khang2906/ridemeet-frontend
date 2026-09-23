@@ -44,6 +44,9 @@ export interface Rsvp {
   id: number;
   event_id: number;
   name: string;
+  // Lets RsvpForm tell "is this my RSVP" by comparing against the logged-in
+  // user's own id. Null for the old free-text RSVPs from before accounts.
+  user_id: number | null;
   created_at: string;
 }
 

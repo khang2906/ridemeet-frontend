@@ -5,17 +5,24 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LoginDialog } from "@/components/LoginDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Rsvp } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function RsvpForm({
   eventId,
+  rsvps,
   onRsvped,
 }: {
   eventId: number;
-  // Called after a successful RSVP instead of the default router.refresh() —
-  // needed by the floating map detail panel, which fetches its event data
-  // client-side rather than through the server component's own re-render.
+  // Used to tell "have I already RSVP'd" by checking for the logged-in
+  // user's own id — the caller already has the full event (and its rsvps)
+  // loaded, so this avoids a second fetch just to answer that question.
+  rsvps: Rsvp[];
+  // Called after a successful RSVP or cancel, instead of the default
+  // router.refresh() — needed by the floating map detail panel, which
+  // fetches its event data client-side rather than through the server
+  // component's own re-render.
   onRsvped?: () => void;
 }) {
   const { user, isLoading } = useAuth();
@@ -23,9 +30,12 @@ export function RsvpForm({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  const myRsvp = user ? rsvps.find((r) => r.user_id === user.id) : undefined;
+
   // Login is required to RSVP (see CLAUDE.md, "Planned pilot") — the backend
   // rejects an anonymous request with 401 regardless, this just avoids a
-  // request that's certain to fail.
+  // request that's certain to fail. Toggles between RSVPing and canceling
+  // depending on whether myRsvp was found above.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -36,15 +46,15 @@ export function RsvpForm({
       // attach the RSVP to this account — without it, the request would be
       // treated as logged out even with a valid session.
       const res = await fetch(`${API_URL}/api/events/${eventId}/rsvp`, {
-        method: "POST",
+        method: myRsvp ? "DELETE" : "POST",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to RSVP");
+      if (!res.ok) throw new Error("Failed to update RSVP");
 
       if (onRsvped) {
         onRsvped();
       } else {
-        // Re-runs the server component's data fetch so the new RSVP shows up,
+        // Re-runs the server component's data fetch so the change shows up,
         // without a full page reload.
         router.refresh();
       }
@@ -72,10 +82,20 @@ export function RsvpForm({
     <form onSubmit={handleSubmit} className="space-y-2">
       <div className="flex items-center gap-2">
         <p className="text-sm">
-          RSVP as <span className="font-medium">{user.display_name}</span>
+          {myRsvp ? (
+            <>You&apos;re going</>
+          ) : (
+            <>
+              RSVP as <span className="font-medium">{user.display_name}</span>
+            </>
+          )}
         </p>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "..." : "RSVP"}
+        <Button
+          type="submit"
+          variant={myRsvp ? "outline" : "default"}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "..." : myRsvp ? "Cancel RSVP" : "RSVP"}
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
