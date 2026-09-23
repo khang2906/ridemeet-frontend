@@ -50,8 +50,11 @@ function MapResizeFix() {
 }
 
 // Recenters on the user's location the first time it resolves — but not if
-// they've already selected an event by then, so a fast click right after
-// page load doesn't get yanked back to "near me".
+// they've already selected an event, or touched the map themselves, by then.
+// Geolocation is async and can resolve seconds after the map first paints,
+// so without the interaction guard this can suddenly zoom in on someone
+// mid-pan/zoom with no warning — it looked "random" precisely because its
+// timing has nothing to do with anything the user just did.
 function FlyToUserLocation({
   location,
   hasSelection,
@@ -59,11 +62,23 @@ function FlyToUserLocation({
   location: [number, number] | null;
   hasSelection: boolean;
 }) {
-  const map = useMap();
   const hasFlown = useRef(false);
+  const hasInteracted = useRef(false);
+
+  // dragstart/zoomstart fire for any user-driven pan or zoom (mouse drag,
+  // scroll wheel, zoom buttons, double-click) — not for this component's own
+  // setView below, since that only ever runs once `hasFlown` is already true.
+  const map = useMapEvents({
+    dragstart: () => {
+      hasInteracted.current = true;
+    },
+    zoomstart: () => {
+      hasInteracted.current = true;
+    },
+  });
 
   useEffect(() => {
-    if (location && !hasFlown.current && !hasSelection) {
+    if (location && !hasFlown.current && !hasSelection && !hasInteracted.current) {
       hasFlown.current = true;
       map.setView(location, USER_LOCATION_ZOOM);
     }
