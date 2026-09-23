@@ -73,7 +73,6 @@ export function EventsExplorer({
           selectedEventId={selectedEventId}
           onSelectEvent={selectEvent}
           onBoundsChange={setBounds}
-          sport={sport}
         />
       </div>
 

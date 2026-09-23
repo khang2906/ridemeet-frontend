@@ -13,7 +13,7 @@ import {
 
 import { markerIcon } from "@/lib/leaflet-icon";
 import { routeColorFor } from "@/lib/routeColors";
-import type { EventListItem, MapBounds, Sport } from "@/types";
+import type { EventListItem, MapBounds } from "@/types";
 
 const MUNICH: [number, number] = [48.1374, 11.5755];
 const USER_LOCATION_ZOOM = 12;
@@ -141,22 +141,24 @@ function BoundsWatcher({ onBoundsChange }: { onBoundsChange: (b: MapBounds) => v
   return null;
 }
 
+// Hard cap on how many routes ever render at once, regardless of sport or
+// viewport — mounting dozens of overlapping polylines gets unreadable long
+// before it gets slow. A plain constant since there's no principled "right"
+// number yet, just "clearly fewer than would look like a tangle"; see
+// TODO.md's "Scaling beyond one region" note for what replaces this if the
+// event count ever grows enough for a fixed cap to feel arbitrary.
+const MAX_ROUTES_SHOWN = 15;
+
 export function EventsMap({
   events,
   selectedEventId,
   onSelectEvent,
   onBoundsChange,
-  sport,
 }: {
   events: EventListItem[];
   selectedEventId: number | null;
   onSelectEvent: (id: number) => void;
   onBoundsChange: (bounds: MapBounds) => void;
-  // Routes only draw when one specific sport is selected, not "All" — mixing
-  // a bike route and a running route on one view doesn't help anyone compare
-  // them, and it lets each route be colored per-event rather than needing a
-  // second color dimension for sport.
-  sport: Sport | undefined;
 }) {
   // Events created before coordinates became mandatory can still have nulls —
   // this type guard both filters them out and tells TypeScript that everything
@@ -170,17 +172,18 @@ export function EventsMap({
   const selectedEvent = located.find((event) => event.id === selectedEventId);
   const userLocation = useUserLocation();
 
-  // Routes are drawn only for events already passing the viewport filter —
-  // the same rule the event list uses — so a route never shows for a pin
-  // that isn't itself on screen. No separate count cap on top of that; see
-  // TODO.md for why.
-  const routedEvents =
-    sport == null
-      ? []
-      : located.filter(
-          (event): event is typeof event & { route_points: [number, number][] } =>
-            event.route_points != null && event.route_points.length > 1
-        );
+  // Shown regardless of sport now that MAX_ROUTES_SHOWN bounds the clutter —
+  // mixing a bike route and a run no longer risks an unreadable tangle the
+  // way it could with every matching route drawn at once. Soonest first
+  // (not sliced by id or arbitrarily): `located` is built from the API's
+  // date-ordered response, so .slice() here keeps that order rather than
+  // needing a separate sort.
+  const routedEvents = located
+    .filter(
+      (event): event is typeof event & { route_points: [number, number][] } =>
+        event.route_points != null && event.route_points.length > 1
+    )
+    .slice(0, MAX_ROUTES_SHOWN);
 
   return (
     <MapContainer
