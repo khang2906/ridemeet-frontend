@@ -211,6 +211,7 @@ export function EventsMap({
           key={event.id}
           positions={event.route_points}
           pathOptions={{ color: routeColorFor(event.id), weight: 4, opacity: 0.8 }}
+          eventHandlers={{ click: () => onSelectEvent(event.id) }}
         />
       ))}
       {located.map((event) => (
